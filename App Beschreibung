@@ -1,0 +1,206 @@
+TITLE: Imker-Webapp – Offline-first Betriebsführung, rechtssicher nach DE/BAWÜ
+
+ROLE
+Du bist: erfahrener Berufsimker, Professor für Bienenwissenschaften, promovierter Informatiker, Senior-UX-Designer. Du kennst TAMG-Pflichten, TSK-Meldungen, Wanderpraxis, Varroa-Monitoring und moderne Web-Architektur. Du arbeitest in Bolt.new und lieferst produktionsnahe, modulare Next.js-Artefakte.
+
+GOAL
+Baue eine Offline-first Webapp für Hobby- und Berufsimker zur schnellen, rechtssicheren Betriebsführung. Fokus: minimale Klicks am Stand, verlässliche Daten, saubere Exporte, klare Warnlogik, robuste Synchronisation.
+
+TARGET AUDIENCE
+Semi-bis Profi-Imker mit Toolerfahrung. Nutzenorientiert, zeitsparend, compliance-sicher, technologie-kritisch.
+
+TECH STACK (erzwingen)
+- Next.js App Router + React + TypeScript
+- Tailwind + shadcn/ui Komponenten
+- Zustand (App-State), React Hook Form + Zod (Form/Validierung)
+- PWA: Service Worker, Manifest, IndexedDB (Dexie) für Offline-Daten + Delta-Sync
+- CSV/JSON/PDF Exporte (serverseitig generiert), ICS-Feed
+- QR (Canvas + Web Share) + Web NFC (mit Fallback)
+- Map (OSM/Leaflet), Wetter via offene API (austauschbar, über Interface)
+- E2E: Playwright. Unit: Vitest. Lint/Format: ESLint/Prettier.
+
+NON-GOALS
+Kein Cloud-Lock-in. Keine proprietären SDKs. Kein Social-Login. Keine unnötigen Freitext-Felder.
+
+CORE PRINCIPLES
+- „Scan → Stockkarte → Aktion“ in ≤2 Klicks.
+- Offline zuerst. Jeder Screen funktioniert offline. Sync ist transparent und konflikt-resistent (CRDT/Last-Write-Wins + Merge-Dialog bei kritischen Kollisionen).
+- Formularlogik führt, nicht überfordert. Checkboxen, Slider, Counter, Segment-Buttons statt Freitext.
+- Jede Pflicht zur Compliance hat einen klaren Export und eine Sperr/Warn-Logik.
+
+INFORMATION ARCHITECTURE
+Hauptnavigation:
+1) Dashboard
+2) Standorte
+3) Völker
+4) Durchsichten
+5) Bestandsbuch (TAMG)
+6) Fütterung
+7) Ernte & Lose
+8) Wanderung
+9) Analytik/Proben
+10) Wachs & Material (Lager)
+11) Behörden & TSK
+12) Dokumente
+13) Kalender
+14) Wiki/Hilfe
+15) Einstellungen/Rollen
+
+DATA MODEL (fachlich, ohne Code)
+- User: id, name, email, rollen[admin|editor|reviewer|viewer], 2FA, einverständnisse.
+- Standort: id, name, adresse, geo(lat,lng), wasserquelle, genehmigungen[], nfc/qr.
+- Volk: id, stocknr, standortId, beute, rahmenmaß, herkunft, königin{id, jahr, markierung}, status{brut,futter,varroa,platz Ampel}, tags[], qr/nfc.
+- Durchsicht: id, volkId, datum, checks{königin, stifte, larven, verdeckelte}, pollen, futter, verhalten, wabenZählung, volksstärke, sprachmemo{url,transkriptRef}, folgeaufgaben[].
+- Behandlung (TAMG): id, volkId|standortId|gesamt, datum, präparat, wirkstoff, charge, dosis, methode, wartezeitTage, behandler, quelle, belegRef, sperrBis.
+- Fütterung: id, volkId|standortId, datum, futtertyp, menge, methode, anlass, saisonSummen.
+- Ernte: id, standortId|volkId, datum, honigräume, kg, wassergehalt, verknüpfungLosId?.
+- Los: id, bezeichnung, zeitraum, standorte[], analytik{wasser,HMF,diastase,..}, MHD, herkunft, etikettenfelder, gläserMapping[].
+- Proben: honigProbe|bienenProbe: id, typ, datum, labor, werte{}, resultat, grenzwertCheck.
+- Wanderung: id, vonStandort, zuStandort, zeitraum, tracht, genehmigungRef, gesundheitszeugnisse[], sperrbezirkChecks.
+- Lager/Inventar: futterwaben[], einschmelzen[], wachsvorräte{eigen, zukauf, mittelwände, entseucht}, beutenteile[], honigvorräte{losId, menge, MHD}, gläser/Deckel/Etiketten.
+- Behörden/TSK: registrierungen, stichtagsmeldung{stichtag 01.01., frist 14.01.}, änderungen(>20% & ≥10 völker), gesundheitszeugnisse{upload, ablauf}, seuchenfälle{meldung,befund,sperrbezirk}.
+- Dokument: id, typ, datei, bezüge[entityId], metadaten.
+- Kalender/Events: termintyp, start, ende, scope{gesamt|standort|volk}, icsExport.
+- Wiki: artikel{id, markdown, tags, version, reviewer}, kontextregeln{formX → artikelY}.
+- Sync: changeLog{entity, op, ts, deviceId}, version.
+
+MODULE-SPECS
+
+Dashboard
+- Kacheln: offene Aufgaben, Fristen, Varroa-Risiko, Futterbedarf, Ernteplanung.
+- Schnellaktionen: Durchsicht, Behandlung, Fütterung, Wanderung.
+- Kontext-Hilfen: relevante Wiki-Artikel.
+- Offline-Hinweis + Sync-Status.
+
+Standorte
+- Auto-GPS bei Anlage. Karte. Genehmigungen, Wasserquelle. NFC/QR für Lagerorte.
+- Sperrbezirk-Check bei Koordinaten (Schnittstellen-Interface, optional simuliert).
+
+Völker (Stockkarten)
+- Ampelstatus (Brut/Futter/Varroa/Platz).
+- Große Stock-Nr., Imker/Halter, QR/NFC. Optional öffentlicher Steckbrief-QR (read-only).
+- Historie: Durchsichten, Behandlungen, Fütterungen, Ernten, Wanderungen.
+
+Durchsicht
+- Schnellformular: Checkboxen + Counter + Slider. Tastatur/Touch optimiert. 30–60 Sek.
+- Sprachmemo-Modus: Aufnahmehinweis, Export-Button „Transkribieren extern“ → Re-Import CSV/JSON.
+- Nach Speichern: automatische Aufgabenempfehlungen (z. B. „Fütterung“, „Nachbehandlung“).
+
+Bestandsbuch (TAMG)
+- Pflichtfelder vollständig. DE-Zulassungskatalog für Varroa-Mittel als gepflegte Datentabelle (updatebar).
+- Wartezeit-Sperre: Honig-Ernte/Los blockiert bis sperrBis.
+- Export: CSV/PDF mit Signaturfeldern.
+
+Fütterung
+- Datum, Typ, Menge, Methode, Anlass. Saison-Summen und Wintervorrat je Volk.
+- Warnungen: Unterdeckung oder zu späte Fütterung.
+
+Ernte & Lose
+- Ernte mit Wassergehalt. Lose bilden über Zeitraum/Standorte. Analytik, MHD, Etikettendaten.
+- Glas→Los Mapping. Etikettendaten-Export.
+
+Hygiene & Schulungen
+- Reinigungen, Monitoring, Wasserchecks. IfSG/Hygiene-Nachweise dokumentieren.
+- Reinigungspläne als Vorlagen.
+
+Wanderung
+- Planung: Zielstand, Zeitraum, Tracht, Genehmigungen. Gesundheitszeugnisse Upload + Ablauf.
+- Multi-Scan: mehrere Völker markieren und Wanderung starten.
+- Sperrbezirk-Warnungen.
+
+Analytik/Proben
+- Honig: Wasser/HMF/Diastase mit Grenzwert-Checks. Bienen: AFB/Nosema.
+- Visualisierung + Historienvergleich.
+
+Wachs & Material / Lager
+- Futterwaben-Lager, Einschmelzen, Wachsvorräte, Beutenteile, Honigvorräte, Erntevorbereitung (Gläser/Deckel/Etiketten-Bedarf).
+- NFC/QR für Lagerplätze.
+
+Behörden & TSK
+- Registrierungen/Nummern. Stichtagsmeldung 01.01. → Frist 14.01. mit Erinnerung.
+- Änderungsmeldungen: >20% und ≥10 Völker.
+- Seuchen: Meldung, Befund, Sperrbezirk.
+
+Dokumente
+- Upload beliebiger Formate. Verknüpfung mit Entitäten. Schnellsuche, Tags.
+
+Wiki/Hilfe
+- Markdown-Editor, Versionierung, Review. FAQ/Troubleshooting.
+- Kontextvorschläge: Formular X → Artikel Y.
+
+Kalender & Reminder
+- In-App Kalender. ICS-Feed. Drag-and-Drop Planung.
+- Wetter-Layer + Trachtkalender via konfigurierbarer Provider-Schnittstelle.
+
+Analytics
+- Dashboards: Ertrag je Volk/Stand/Saison; Medikamenteneinsatz; Varroa-Kurven + Wirksamkeit; Jahresvergleich.
+- Export PNG/PDF.
+
+Gamification
+- Punkte für gepflegte Daten. Saison-Checklisten. Badges.
+
+OFFLINE-FIRST & SYNC
+- IndexedDB als Primärspeicher. Delta-Sync an Server, batching + retry.
+- Konfliktlösung: Feldebene. Kritisch: Dialog mit Diff-Ansicht.
+- „Standbesuch vorbereiten“: Pre-Sync benötigter Datensätze + Medien.
+- Medien-Uploads in Queue mit Hintergrund-Sync.
+
+SECURITY & PRIVACY
+- EU-Hosting, DSGVO. 2FA. At-Rest/Transport Verschlüsselung.
+- Optional E2E für sensible Dokumente.
+- Rollen/Rechte bis Objektebene. Öffentliche Ansichten strict opt-in und read-only.
+
+COMPLIANCE (DE, BAWÜ)
+- TAMG-Bestandsbuch vollständig. Wartezeit-Sperrlogik.
+- TSK-Meldungen: Stichtag 01.01., Frist 14.01.; Änderungsmeldung bei >20% & ≥10 Völkern.
+- Gesundheitszeugnisse: Upload, Ablauf-Warnung.
+- Medikamentenliste als pflegbares Datenset mit Quelle/Version.
+
+UX RULES
+- Mobile first. Große Ziele. Daumenreichweite.
+- Form-Komponenten: Checkbox, Slider, Counter, Segmented, Date/Time, Scanner.
+- Farbkodierte Status. Dark/Light. Haptik/Keybindings.
+- Scan→Stockkarte→Aktion ≤2 Klicks.
+- Fehlertexte kurz und handlungsleitend.
+
+ACCESSIBILITY & I18N
+- WCAG AA, Fokuszustände, ARIA, Tastatursteuerung.
+- DE primär, EN sekundär. Einheiten/Datumsformat lokalisiert.
+
+PERFORMANCE
+- TTI < 2s auf Mid-Range Phone. P95 Interaktion < 100ms.
+- Code-Splitting je Route. Images lazy. Tabellen virtuell.
+
+OBSERVABILITY
+- Fehler-Toasts, Offline-Banner, Sync-Status. Optional Telemetrie-Interface (selbst hostbar).
+
+EXPORTS & REPORTS
+- CSV/JSON für Rohdaten. PDF für Berichte/Bestandsbuch. ICS Kalenderfeed.
+
+SETTINGS
+- Rollen & Rechte. Etiketten-Vorlagen. Schwellwerte (z. B. Wintervorrat). Provider-Keys für Wetter/Maps.
+
+ACCEPTANCE CRITERIA (stichprobenartig)
+- Eine Durchsicht mit Audio-Memo offline erfassen, später transkribiertes JSON importieren, Aufgaben werden erzeugt.
+- Behandlung mit Wartezeit blockiert Ernte/Lose bis Datum X.
+- Wanderung: Multi-Scan mehrerer Völker, Sperrbezirk-Warnung erscheint, Gesundheitszeugnis-Ablauf im Kalender.
+- Ernte → Los → Etikettendaten-Export. Glas→Los Mapping funktioniert.
+- Stichtagsmeldung generieren als PDF/CSV. Änderungsmeldung getriggert bei Grenzwert.
+- Vollständiger Sync-Konflikt wird angezeigt und gelöst.
+- ICS-Feed in externem Kalender abonnierbar.
+- Alle Kerntabellen sind offline les-/bearbeitbar. App bleibt nutzbar ohne Netz.
+
+TESTING
+- Unit-Tests für Form-Validierung und Wartezeit-Sperren.
+- E2E-Flows: Scan→Durchsicht, Behandlung→Sperre, Ernte→Los, Wanderung, Offline-Erfassung→Online-Sync.
+- A11y-Checks automatisiert.
+
+SEED & DEMO
+- Demo-Imkerei mit 2 Standorten, 8 Völkern, 1 Wanderung, 1 Los, 3 Behandlungen, 2 Fütterungen, 2 Proben, 1 Stichtagsmeldung.
+- QR/NFC-Dummies generiert.
+
+DELIVERABLES
+- Laufende PWA in Bolt.new Preview.
+- Klar strukturierte Routen/Komponenten je Modul.
+- README mit Setup, Architektur, Sync-Strategie, Compliance-Hinweisen, Datenexporten.
+- Beispiel-Exporte: Bestandsbuch-PDF, CSV-Dumps, ICS-Feed-URL.
