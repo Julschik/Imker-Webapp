@@ -1,0 +1,130 @@
+TITLE: Imker-Webapp v2 – Offline-first, rechtssicher, QR-first
+
+GOAL
+Baue eine Offline-first Webapp für Hobby- und Berufsimker zur schnellen, rechtssicheren Betriebsführung. Fokus: QR-first Scan→Stockkarte→Aktion ≤2 Klicks, verlässliche Daten, saubere Exporte, klare Sperr-/Warnlogik, robuste Synchronisation.
+
+AUDIENCE
+Semi- bis Profi-Imker. Nutzenorientiert, zeitsparend, compliance-sicher, technologie-kritisch.
+
+SCOPE v1.0 (MVP)
+- Module: Dashboard, Standorte, Völker/Stockkarten, Durchsichten, Bestandsbuch (TAMG), Fütterung, Ernte & Lose, Wanderung, Proben/Analytik, Lager, Behörden/TSK, Dokumente, Kalender/Reminder, Wiki/Hilfe, Einstellungen/Rollen.
+- Offline vollständig für Kernvorgänge. Delta-Sync bei Online.
+- Konfliktlösung: Feldweises Last-Write-Wins. „Kritische Entitäten“ (Behandlung, Ernte, Los) zeigen einfachen Merge-Dialog auf Datensatzebene.
+- Rollen: workspace-weit (Admin, Editor, Viewer). Objekt-Level später.
+- Sicherheit: E-Mail/Passwort + TOTP 2FA. E2E-Verschlüsselung für Dokumente später.
+
+OUT OF SCOPE v1.0
+- Vollständige CRDTs. Objekt-Level-ACL. E2E für beliebige Felder. Automatisches Sperrbezirk-Crawling. Per-Jar-Serialisierung als Pflicht. Diese sind Phase 2+.
+
+ARCHITEKTUR
+- Frontend: Next.js App Router + TypeScript + Tailwind + shadcn/ui. PWA mit Service Worker. IndexedDB (Dexie) als Primärspeicher.
+- Sync: REST-ABI `/sync/pull` (sinceCursor) und `/sync/push` (batch). Soft-deletes, server timestamps. Medien-Queue mit Retry.
+- Referenz-Backend (self-hosted, kein Lock-in): Fastify (Node) + Postgres + MinIO(S3) + Keycloak/Ory. PDF/ICS serverseitig. 
+- Alternative Adapter: Supabase (DB/Auth/Storage/Edge Functions) mit identischem REST-ABI. Umschaltbar via `.env` + Provider-Interface.
+
+PROVIDER-INTERFACES
+- WetterProvider: Open-Meteo (Default). Austauschbar via Adapter.
+- TranskriptProvider: Whisper lokal (Default) oder OpenAI Whisper. Datei-Roundtrip.
+- SperrbezirkProvider: GeoJSON-Upload + manuelle Pflege. Optional Hinweislink pro Standort.
+
+DATENMODELL (vereinheitlicht)
+Common
+- FileRef { id, storageKey, mime, bytes, sha256, createdAt, signedUrl? }
+- Address { strasse, plz, ort, land }
+- Geo { lat, lng, geohash? }
+
+User { id, email, name, roles[], twofaEnabled }
+Workspace { id, name }
+Membership { userId, workspaceId, role }
+
+Standort { id, workspaceId, name, address:Address, geo:Geo, wasserquelle?, genehmigungen:FileRef[], tags[], qrKey?, nfcUid? }
+
+Queen { id, workspaceId, year, marking?, origin?, notes? }
+Volk { id, workspaceId, stocknr, standortId, beute, rahmenmass, herkunft?, koeniginId?:Queen.id, status{brut,futter,varroa,platz}, tags[], qrKey?, nfcUid? }
+
+Durchsicht { id, volkId, datum, checks{königin,stifte,larven,verdeckelte}, pollen?, futter?, verhalten?, wabenZaehlen{brut,futter,leer}, volksstaerke(0-10), sprachmemoFile?:FileRef.id, transkriptFile?:FileRef.id, followUps[] }
+
+Behandlung (TAMG)
+{ id, scope{volkId?|standortId?|workspace}, datum, praep, wirkstoff, charge?, dosis, methode?, wartezeitTage, behandler, quelle?, belegRef?:FileRef.id, sperrBis }
+
+Fütterung { id, volkId?|standortId?, datum, futtertyp, menge_kg, methode?, anlass? }
+
+Ernte { id, standortId?|volkId?, datum, honigraeume, kg, wassergehalt, notiz? }
+Los { id, name, zeitraum{von,bis}, standorte:standortId[], analytik{wasser?,HMF?,diastase?}, mhd, etikettenfelder{
+  verkehrsbez:"Honig", sorte?, herkunft, fuellmenge_g, mhd, loscode, inverkehrbringer{ name, adresse:Address }, zusatzfelder{ [key]:string[] }
+}, oeffentlich?:boolean, publicId?:string }
+HarvestLotAlloc { harvestId, lotId, kg }
+
+GlaeserMapping { id, lotId, jar_ml, deckel_typ, anzahl, serial_start?, serial_end? }
+
+Probe { id, typ["honig"|"bienen"], datum, labor?, werte{...}, resultat?, grenzwertCheck? }
+
+Wanderung { id, vonStandortId, zuStandortId, zeitraum{von,bis}, tracht?, genehmigungRef?:FileRef.id, gesundheitszeugnisse:FileRef[], sperrbezirkCheck{status, details?} }
+
+Lager
+- FutterwabeBatch { id, standortId?, anzahl, gereinigt:boolean }
+- EinschmelzBatch { id, typ, gewicht_kg, seuchenstatus }
+- WachsBatch { id, art["eigen","zukauf","mittelwand"], gewicht_kg, entseucht:boolean, charge?, mhd? }
+- BeutenteilBatch { id, teil, zustand, menge }
+- HonigVorrat { id, lotId, menge_kg, mhd }
+
+BehoerdenTSK
+- Registrierung { id, nr, dokument?:FileRef.id }
+- Stichtagsmeldung { id, jahr, erstelltAm, exportFile?:FileRef.id }
+- Aenderungsmeldung { id, datum, altBestand, neuBestand, exportFile?:FileRef.id }
+- Seuchenfall { id, datum, meldungRef?:FileRef.id, befundRef?:FileRef.id, sperrbezirkGeo?:FileRef.id }
+
+Dokument { id, typ, file:FileRef, bezuege{ entity:string, id:string }[] }
+
+KalenderEvent { id, typ, start, ende?, scope["workspace"|"standort"|"volk"], sourceEntity? }
+
+WikiArtikel { id, title, markdown, tags[], version, reviewedBy?, kontextregeln?[] }
+
+SYNC & KONFLIKTE
+- LWW pro Feld mit `updatedAt` und `updatedBy`.
+- Kritisch: Behandlung/Ernte/Los → Merge-Dialog: „Server vs. Lokal“ mit Auswahl je Feld.
+- `/sync/pull?cursor=` liefert geordnete Changes. `/sync/push` akzeptiert Batch mit idempotencyKey.
+
+SCAN & IDENTIFIKATION
+- QR-first: Kamera öffnet Live-QR. Treffer auf `qrKey` → Deep-Link zur Entität.
+- NFC optional: Button „NFC lesen“ falls `navigator.nfc` verfügbar. Fallback: Suche nach Stock-Nr.
+
+ÖFFENTLICHE STECKBRIEFE
+- Opt-in pro Volk/Los: erzeugt `publicId`. Route `/p/{publicId}` read-only. Minimalfelder. `robots:noindex`. Standortkoordinaten optional gerundet.
+
+TAMG-KATALOG-UPDATES
+- Admin-UI Import CSV/JSON Schema `{praep, wirkstoff, zulassungsnr, darreichung, anwendung, wartezeitTage, quelle, version, gueltigAb}`.
+- Versionierung + Änderungslog in `tamg_catalog_versions`.
+- Optionaler Fetch aus konfigurierbarer Git-URL.
+
+UX RULES
+- Mobile first. Große Touchziele. Farbige Ampeln. Segment-Buttons statt Freitext.
+- Fehlertexte kurz, handlungsleitend.
+- Scan→Stockkarte→Aktion ≤2 Klicks.
+
+ANALYTIK
+- Charts: Ertrag je Volk/Stand/Saison. Medikamenteneinsatz. Varroa-Kurven + Wirksamkeit. Jahresvergleich.
+- Export PNG/PDF.
+
+KALENDER & ICS
+- In-App Kalender. ICS-Feed pro Workspace via `/ics/{workspaceId}/{token}`.
+
+EXPORTS
+- CSV/JSON Rohdaten je Modul. PDF: Bestandsbuch signaturfähig, Stichtags-/Änderungsmeldung, Los-Etikettendaten.
+
+SICHERHEIT & DATENSCHUTZ
+- EU-Hosting möglich. TLS. At-Rest Verschlüsselung Storage. TOTP 2FA.
+- Rollen: Admin/Editor/Viewer workspaceweit. Objekt-ACL in Phase 2.
+- E2E für Dokumente in Phase 2.
+
+AKZEPTANZ (Stichproben)
+- Offline Durchsicht inkl. Audio aufnehmen → später Transkript importieren → Aufgaben erzeugt.
+- Behandlung setzt `sperrBis` → Ernte/Los gesperrt bis Termin.
+- Wanderung Multi-Scan → Sperrbezirk-Warnung bei vorhandenem GeoJSON.
+- Ernte↔Los via Allokation → Etikettendaten-Export → GläserMapping erfasst.
+- ICS abonnierbar. Sync-Konflikt an kritischer Entität sichtbar lösbar.
+
+ENTWICKLUNGSUMGEBUNG (Tooling)
+- Zustand, RHF + Zod, Dexie. Tests: Vitest, Playwright. Lint/Format: ESLint/Prettier.
+- PDF: serverseitig (Fastify Route), clientseitig optional via jsPDF als Fallback.
+- ENV-Schalter `BACKEND_PROVIDER` ∈ {selfhosted,supabase}.
