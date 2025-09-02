@@ -86,6 +86,20 @@ export const QueenSchema = z.object({
   deletedAt: z.date().optional()
 })
 
+// Queen Event schema for history tracking
+export const QueenEventSchema = z.object({
+  id: z.string(),
+  volkId: z.string(),
+  queenId: z.string(),
+  von: z.date(),
+  bis: z.date().optional(),
+  grund: z.string().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+  updatedBy: z.string(),
+  deletedAt: z.date().optional()
+})
+
 // Volk schema
 export const VolkSchema = z.object({
   id: z.string(),
@@ -165,6 +179,22 @@ export const BehandlungSchema = z.object({
   deletedAt: z.date().optional()
 })
 
+// Fütterung schema
+export const FuetterungSchema = z.object({
+  id: z.string(),
+  volkId: z.string().optional(),
+  standortId: z.string().optional(),
+  datum: z.date(),
+  futtertyp: z.enum(['zuckerwasser', 'sirup', 'teig', 'fondant', 'honig']),
+  menge_kg: z.number().min(0),
+  methode: z.enum(['futtertasche', 'obertraeger', 'leerzarge', 'direktfuetterung']).optional(),
+  anlass: z.enum(['auffuetterung', 'notfuetterung', 'reizfuetterung', 'wintervorrat']).optional(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+  updatedBy: z.string(),
+  deletedAt: z.date().optional()
+})
+
 // Kalender Event schema
 export const KalenderEventSchema = z.object({
   id: z.string(),
@@ -190,7 +220,9 @@ export type Workspace = z.infer<typeof WorkspaceSchema>
 export type Membership = z.infer<typeof MembershipSchema>
 export type Standort = z.infer<typeof StandortSchema>
 export type Queen = z.infer<typeof QueenSchema>
+export type QueenEvent = z.infer<typeof QueenEventSchema>
 export type Volk = z.infer<typeof VolkSchema>
 export type Durchsicht = z.infer<typeof DurchsichtSchema>
 export type Behandlung = z.infer<typeof BehandlungSchema>
+export type Fuetterung = z.infer<typeof FuetterungSchema>
 export type KalenderEvent = z.infer<typeof KalenderEventSchema>
