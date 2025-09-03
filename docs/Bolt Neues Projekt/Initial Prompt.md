@@ -77,7 +77,7 @@ ACCEPTANCE CRITERIA
 - Build erfolgreich ohne Fehler
 
 MOCK DATA
-Erstelle 3-5 Beispiel-Völker mit verschiedenen Ampel-Status für Demo.
+Erstelle 5 Beispiel-Völker an zwei Standorten mit verschiedenen Ampel-Status für Demo.
 
 CONSTRAINTS
 - Keine externen APIs oder Backends
@@ -86,5 +86,5 @@ CONSTRAINTS
 - Modulare Erweiterbarkeit wichtiger als Feature-Vollständigkeit
 
 START SIMPLE
-Beginne mit funktionierendem QR-Scanner und Stockkarten-Anzeige. Weitere Features kommen als separate Module dazu.
+Beginne mit funktionierendem QR-Scanner und Stockkarten-Anzeige sowie der Durchsicht. Weitere Features kommen als separate Module dazu.
 ```
