@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST="{}"
+self.__REACT_LOADABLE_MANIFEST="{\"utils/dexie.ts -> ./_imker-database-client\":{\"id\":\"utils/dexie.ts -> ./_imker-database-client\",\"files\":[\"static/chunks/_app-pages-browser_src_utils__imker-database-client_ts.js\"]}}"

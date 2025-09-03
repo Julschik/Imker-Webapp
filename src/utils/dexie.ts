@@ -1,166 +1,88 @@
-import Dexie, { Table } from 'dexie';
-import { log, error } from './log';
+import { log, warn, error } from './log';
 
-// Basis-Typen für alle Entitäten
-export interface BaseEntity {
-  id: string;
-  createdAt: Date;
-  updatedAt: Date;
-  updatedBy?: string;
-  deletedAt?: Date;
+// Re-export types for convenience
+export type {
+  BaseEntity,
+  User,
+  Workspace,
+  Membership,
+  Standort,
+  Volk,
+  Durchsicht,
+  Behandlung,
+  SyncMeta
+} from './_imker-database-client';
+
+// Database interface for type safety
+interface DatabaseInterface {
+  users: any;
+  workspaces: any;
+  memberships: any;
+  standorte: any;
+  voelker: any;
+  durchsichten: any;
+  behandlungen: any;
+  syncMeta: any;
+  open(): Promise<void>;
 }
 
-// Kern-Entitäten für MVP
-export interface User extends BaseEntity {
-  email: string;
-  name: string;
-  roles: string[];
-  twofaEnabled: boolean;
-}
-
-export interface Workspace extends BaseEntity {
-  name: string;
-}
-
-export interface Membership extends BaseEntity {
-  userId: string;
-  workspaceId: string;
-  role: 'admin' | 'editor' | 'viewer' | 'helfer';
-}
-
-export interface Standort extends BaseEntity {
-  workspaceId: string;
-  name: string;
-  address: {
-    strasse?: string;
-    plz?: string;
-    ort?: string;
-    land?: string;
-  };
-  geo?: {
-    lat: number;
-    lng: number;
-    geohash?: string;
-  };
-  wasserquelle?: string;
-  tags: string[];
-  qrKey?: string;
-  nfcUid?: string;
-}
-
-export interface Volk extends BaseEntity {
-  workspaceId: string;
-  stocknr: string;
-  standortId: string;
-  beute?: string;
-  rahmenmass?: string;
-  herkunft?: string;
-  koeniginId?: string;
-  status: {
-    brut: 'gut' | 'mittel' | 'schlecht';
-    futter: 'gut' | 'mittel' | 'schlecht';
-    varroa: 'gut' | 'mittel' | 'schlecht';
-    platz: 'gut' | 'mittel' | 'schlecht';
-  };
-  tags: string[];
-  qrKey?: string;
-  nfcUid?: string;
-}
-
-export interface Durchsicht extends BaseEntity {
-  volkId: string;
-  datum: Date;
-  checks: {
-    koenigin: boolean;
-    stifte: boolean;
-    larven: boolean;
-    verdeckelte: boolean;
-  };
-  pollen?: boolean;
-  futter?: boolean;
-  verhalten?: string;
-  wabenZaehlen?: {
-    brut: number;
-    futter: number;
-    leer: number;
-  };
-  volksstaerke?: number; // 0-10
-  sprachmemoFileId?: string;
-  transkriptFileId?: string;
-  followUps: string[];
-}
-
-export interface Behandlung extends BaseEntity {
-  scope: {
-    volkId?: string;
-    standortId?: string;
-    workspace?: boolean;
-  };
-  datum: Date;
-  praep: string;
-  wirkstoff: string;
-  charge?: string;
-  dosis: string;
-  methode?: string;
-  wartezeitTage: number;
-  behandler: string;
-  quelle?: string;
-  belegRefId?: string;
-  sperrBis: Date;
-}
-
-// Sync-Metadaten
-export interface SyncMeta extends BaseEntity {
-  cursor: string;
-  lastSync: Date;
-}
-
-export class ImkerDatabase extends Dexie {
-  users!: Table<User>;
-  workspaces!: Table<Workspace>;
-  memberships!: Table<Membership>;
-  standorte!: Table<Standort>;
-  voelker!: Table<Volk>;
-  durchsichten!: Table<Durchsicht>;
-  behandlungen!: Table<Behandlung>;
-  syncMeta!: Table<SyncMeta>;
-
-  constructor() {
-    super('ImkerDatabase');
-    
-    this.version(1).stores({
-      users: 'id, email, name, updatedAt',
-      workspaces: 'id, name, updatedAt',
-      memberships: 'id, userId, workspaceId, role, updatedAt',
-      standorte: 'id, workspaceId, name, updatedAt',
-      voelker: 'id, workspaceId, standortId, stocknr, updatedAt',
-      durchsichten: 'id, volkId, datum, updatedAt',
-      behandlungen: 'id, datum, sperrBis, updatedAt',
-      syncMeta: 'id, cursor, lastSync'
-    });
-
-    log('Dexie', 'Database schema initialized');
+// Dummy database for SSR
+const createDummyDatabase = (): DatabaseInterface => ({
+  users: { add: async () => {}, get: async () => null, toArray: async () => [] },
+  workspaces: { add: async () => {}, get: async () => null, toArray: async () => [] },
+  memberships: { add: async () => {}, get: async () => null, toArray: async () => [] },
+  standorte: { add: async () => {}, get: async () => null, toArray: async () => [] },
+  voelker: { add: async () => {}, get: async () => null, toArray: async () => [] },
+  durchsichten: { add: async () => {}, get: async () => null, toArray: async () => [] },
+  behandlungen: { add: async () => {}, get: async () => null, toArray: async () => [] },
+  syncMeta: { add: async () => {}, get: async () => null, toArray: async () => [] },
+  open: async () => {
+    warn('Dexie', 'Database operations skipped on server-side');
   }
-}
+});
 
-// Lazy singleton-Instanz
-let dbInstance: ImkerDatabase | null = null;
+// Singleton-Instanz
+let dbInstance: DatabaseInterface | null = null;
 
-export function getDbInstance(): ImkerDatabase {
+export async function getDbInstance(): Promise<DatabaseInterface> {
+  // Server-side: Return dummy database
+  if (typeof window === 'undefined') {
+    warn('Dexie', 'Server-side detected, using dummy database');
+    return createDummyDatabase();
+  }
+
+  // Client-side: Lazy load real database
   if (!dbInstance) {
-    dbInstance = new ImkerDatabase();
+    try {
+      log('Dexie', 'Initializing client-side database');
+      const { ImkerDatabase } = await import('./_imker-database-client');
+      dbInstance = new ImkerDatabase();
+      log('Dexie', 'Client-side database instance created');
+    } catch (err) {
+      error('Dexie', 'Failed to create database instance', err);
+      // Fallback to dummy database on error
+      dbInstance = createDummyDatabase();
+    }
   }
+  
   return dbInstance;
 }
 
-// Initialisierung mit Fehlerbehandlung
+// Initialisierung mit Fehlerbehandlung und SSR-Schutz
 export async function initDatabase(): Promise<void> {
   try {
-    const db = getDbInstance();
+    // Skip database initialization on server-side
+    if (typeof window === 'undefined') {
+      warn('Dexie', 'Database initialization skipped on server-side');
+      return;
+    }
+
+    log('Dexie', 'Starting database initialization');
+    const db = await getDbInstance();
     await db.open();
     log('Dexie', 'Database opened successfully');
     
-    // Prüfe ob bereits Sync-Meta existiert
+    // Prüfe ob bereits Sync-Meta existiert (nur client-side)
     const syncMeta = await db.syncMeta.get('main');
     if (!syncMeta) {
       await db.syncMeta.add({
@@ -171,9 +93,12 @@ export async function initDatabase(): Promise<void> {
         updatedAt: new Date()
       });
       log('Dexie', 'Initial sync meta created');
+    } else {
+      log('Dexie', 'Sync meta already exists');
     }
   } catch (err) {
     error('Dexie', 'Failed to initialize database', err);
-    throw new Error('Database initialization failed');
+    warn('Dexie', 'Database functionality will be limited');
+    // Don't throw error - let app continue with limited functionality
   }
 }
