@@ -143,12 +143,20 @@ export class ImkerDatabase extends Dexie {
   }
 }
 
-// Singleton-Instanz
-export const db = new ImkerDatabase();
+// Lazy singleton-Instanz
+let dbInstance: ImkerDatabase | null = null;
+
+export function getDbInstance(): ImkerDatabase {
+  if (!dbInstance) {
+    dbInstance = new ImkerDatabase();
+  }
+  return dbInstance;
+}
 
 // Initialisierung mit Fehlerbehandlung
 export async function initDatabase(): Promise<void> {
   try {
+    const db = getDbInstance();
     await db.open();
     log('Dexie', 'Database opened successfully');
     

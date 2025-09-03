@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { ImkerDatabase, initDatabase } from '@/utils/dexie';
+import { getDbInstance, initDatabase } from '@/utils/dexie';
 
 describe('Dexie Database', () => {
   let db: ImkerDatabase;
 
   beforeEach(async () => {
+    const db = getDbInstance();
     db = new ImkerDatabase();
     await db.open();
   });
