@@ -8,6 +8,7 @@
 - [x] Modulare Architektur
 - [ ] Service Worker für PWA
 - [ ] Sync-Mechanismus (Basis)
+- [ ] Attraktives, Modernes UI und UX
 
 ## Phase 2: TAMG-Compliance
 - [ ] Behandlungs-Erfassung
