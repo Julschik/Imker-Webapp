@@ -37,3 +37,19 @@ Umsetzung von M0 aus der Roadmap: "Projekt-Skeleton mit Routen und State anlegen
 - Einheitlicher Error-Typ vorbereitet
 - Console-Logs für alle wichtigen Aktionen (Login, Logout, DB-Init, Routing)
 - Tests für Happy Path und Fehlerpfade in Auth und Dexie
+
+### 2025-01-27 16:15 – Task 1: package.json Skripte absichern
+
+**Datei/Komponente:** package.json
+**Änderung:** 
+- Script "start" erweitert um expliziten Port `-p 3000`
+- Script "test" geändert von `vitest` auf `vitest run` für CI-Kompatibilität
+
+**Grund:** 
+Absicherung der npm-Skripte gemäß Hotfix Batch 1. Expliziter Port verhindert Konflikte, `vitest run` ist deterministischer für automatisierte Tests.
+
+**Umsetzung:** 
+Minimale Änderung nur der betroffenen Script-Zeilen, bestehende Abhängigkeiten unverändert
+
+**Debug/Logs:** 
+Keine neuen Logs in diesem Schritt, Vorbereitung für nachfolgende Tasks
