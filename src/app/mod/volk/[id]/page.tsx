@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Hexagon, MapPin, Calendar, Plus, ArrowLeft } from 'lucide-react';
-import { getDB, Volk, Standort } from '@/lib/db';
+import { getDB } from '@/lib/db';
+import { Volk, Standort } from '@/lib/types';
 import { log } from '@/utils/log';
 import Link from 'next/link';
 

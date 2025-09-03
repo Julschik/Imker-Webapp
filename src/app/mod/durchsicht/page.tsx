@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { Eye, Save, ArrowLeft } from 'lucide-react';
-import { getDB, Volk, Durchsicht } from '@/lib/db';
+import { getDB } from '@/lib/db';
+import { Volk, Durchsicht } from '@/lib/types';
 import { log } from '@/utils/log';
 
 export default function DurchsichtPage() {

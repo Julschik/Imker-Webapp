@@ -1,165 +1,24 @@
-import Dexie, { Table } from 'dexie';
+import { log } from '@/utils/log';
 
 // Client-only DB instance
-let dbInstance: ImkerDB | null = null;
+let dbInstance: any = null;
 
-export function getDB(): ImkerDB {
+export async function getDB() {
   if (typeof window === 'undefined') {
     throw new Error('Database can only be accessed on the client side');
   }
   
   if (!dbInstance) {
-    dbInstance = new ImkerDB();
+    try {
+      const { ImkerDB, initMockData } = await import('./db-client');
+      dbInstance = new ImkerDB();
+      await initMockData(dbInstance);
+      log('db', 'Datenbank initialisiert');
+    } catch (error) {
+      log('db', 'Fehler beim Initialisieren der Datenbank:', error);
+      throw error;
+    }
   }
   
   return dbInstance;
-}
-
-// Kern-Entitäten
-export interface Volk {
-  id: string;
-  stocknr: string;
-  standortId: string;
-  beute: string;
-  status: {
-    brut: 'grün' | 'gelb' | 'rot';
-    futter: 'grün' | 'gelb' | 'rot';
-    varroa: 'grün' | 'gelb' | 'rot';
-    platz: 'grün' | 'gelb' | 'rot';
-  };
-  qrKey: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface Durchsicht {
-  id: string;
-  volkId: string;
-  datum: Date;
-  checks: {
-    königin: boolean;
-    stifte: boolean;
-    larven: boolean;
-    verdeckelte: boolean;
-  };
-  volksstaerke: number; // 1-10 Skala
-  notizen: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface Standort {
-  id: string;
-  name: string;
-  adresse: string;
-  geo?: {
-    lat: number;
-    lng: number;
-  };
-  qrKey?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export class ImkerDB extends Dexie {
-  voelker!: Table<Volk>;
-  durchsichten!: Table<Durchsicht>;
-  standorte!: Table<Standort>;
-
-  constructor() {
-    super('ImkerDB');
-    this.version(1).stores({
-      voelker: 'id, stocknr, standortId, qrKey',
-      durchsichten: 'id, volkId, datum',
-      standorte: 'id, name, qrKey'
-    });
-  }
-}
-
-// Mock-Daten für Demo
-export async function initMockData() {
-  const db = getDB();
-  const standorteCount = await db.standorte.count();
-  if (standorteCount > 0) return; // Bereits initialisiert
-
-  const now = new Date();
-
-  // Standorte erstellen
-  const standorte: Standort[] = [
-    {
-      id: 'standort-1',
-      name: 'Heimstand',
-      adresse: 'Musterstraße 1, 12345 Musterstadt',
-      geo: { lat: 49.0069, lng: 8.4037 },
-      qrKey: 'standort-heimstand',
-      createdAt: now,
-      updatedAt: now
-    },
-    {
-      id: 'standort-2',
-      name: 'Wanderstand Raps',
-      adresse: 'Feldweg 5, 12346 Nachbarort',
-      geo: { lat: 49.0169, lng: 8.4137 },
-      qrKey: 'standort-raps',
-      createdAt: now,
-      updatedAt: now
-    }
-  ];
-
-  // Völker erstellen
-  const voelker: Volk[] = [
-    {
-      id: 'volk-1',
-      stocknr: '001',
-      standortId: 'standort-1',
-      beute: 'Dadant 12er',
-      status: { brut: 'grün', futter: 'grün', varroa: 'gelb', platz: 'grün' },
-      qrKey: 'volk-001',
-      createdAt: now,
-      updatedAt: now
-    },
-    {
-      id: 'volk-2',
-      stocknr: '002',
-      standortId: 'standort-1',
-      beute: 'Dadant 12er',
-      status: { brut: 'grün', futter: 'gelb', varroa: 'grün', platz: 'gelb' },
-      qrKey: 'volk-002',
-      createdAt: now,
-      updatedAt: now
-    },
-    {
-      id: 'volk-3',
-      stocknr: '003',
-      standortId: 'standort-1',
-      beute: 'Zander 10er',
-      status: { brut: 'rot', futter: 'rot', varroa: 'rot', platz: 'rot' },
-      qrKey: 'volk-003',
-      createdAt: now,
-      updatedAt: now
-    },
-    {
-      id: 'volk-4',
-      stocknr: '101',
-      standortId: 'standort-2',
-      beute: 'Dadant 12er',
-      status: { brut: 'grün', futter: 'grün', varroa: 'grün', platz: 'grün' },
-      qrKey: 'volk-101',
-      createdAt: now,
-      updatedAt: now
-    },
-    {
-      id: 'volk-5',
-      stocknr: '102',
-      standortId: 'standort-2',
-      beute: 'Dadant 12er',
-      status: { brut: 'gelb', futter: 'grün', varroa: 'gelb', platz: 'grün' },
-      qrKey: 'volk-102',
-      createdAt: now,
-      updatedAt: now
-    }
-  ];
-
-  await db.standorte.bulkAdd(standorte);
-  await db.voelker.bulkAdd(voelker);
 }

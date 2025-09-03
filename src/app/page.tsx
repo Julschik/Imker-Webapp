@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { ModuleCard } from '@/components/ui/module-card';
 import { getEnabledModules } from '@/lib/registry';
-import { initMockData, getDB } from '@/lib/db';
+import { getDB } from '@/lib/db';
 import { log } from '@/utils/log';
 
 export default function Dashboard() {
@@ -12,8 +12,8 @@ export default function Dashboard() {
   useEffect(() => {
     const initApp = async () => {
       try {
-        await initMockData();
-        log('dashboard', 'Mock-Daten initialisiert');
+        await getDB();
+        log('dashboard', 'Datenbank bereit');
       } catch (error) {
         log('dashboard', 'Fehler beim Initialisieren:', error);
       }
