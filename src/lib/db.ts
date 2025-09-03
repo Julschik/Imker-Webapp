@@ -1,3 +1,5 @@
+'use client';
+
 import { log } from '@/utils/log';
 
 // Client-only DB instance

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { getDB } from '@/lib/db';
 import { ModuleCard } from '@/components/ui/module-card';
 import { getEnabledModules } from '@/lib/registry';
 import { getDB } from '@/lib/db';
