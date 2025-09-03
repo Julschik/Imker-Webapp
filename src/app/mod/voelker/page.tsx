@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Hexagon, MapPin, Eye } from 'lucide-react';
-import { db, Volk, Standort } from '@/lib/db';
+import { getDB, Volk, Standort } from '@/lib/db';
 import { log } from '@/utils/log';
 import Link from 'next/link';
 
@@ -20,6 +20,7 @@ export default function VoelkerPage() {
   useEffect(() => {
     const loadVoelker = async () => {
       try {
+        const db = getDB();
         const allVoelker = await db.voelker.toArray();
         const allStandorte = await db.standorte.toArray();
         

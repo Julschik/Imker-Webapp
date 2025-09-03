@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { Eye, Save, ArrowLeft } from 'lucide-react';
-import { db, Volk, Durchsicht } from '@/lib/db';
+import { getDB, Volk, Durchsicht } from '@/lib/db';
 import { log } from '@/utils/log';
 
 export default function DurchsichtPage() {
@@ -38,6 +38,7 @@ export default function DurchsichtPage() {
       }
 
       try {
+        const db = getDB();
         const foundVolk = await db.voelker.get(volkId);
         if (foundVolk) {
           setVolk(foundVolk);
@@ -64,6 +65,7 @@ export default function DurchsichtPage() {
 
     setSaving(true);
     try {
+      const db = getDB();
       const durchsicht: Durchsicht = {
         id: `durchsicht-${Date.now()}`,
         volkId: volk.id,

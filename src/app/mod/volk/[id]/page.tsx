@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Hexagon, MapPin, Calendar, Plus, ArrowLeft } from 'lucide-react';
-import { db, Volk, Standort } from '@/lib/db';
+import { getDB, Volk, Standort } from '@/lib/db';
 import { log } from '@/utils/log';
 import Link from 'next/link';
 
@@ -20,6 +20,7 @@ export default function VolkPage() {
   useEffect(() => {
     const loadVolk = async () => {
       try {
+        const db = getDB();
         const stocknr = params.id as string;
         log('volk', 'Lade Volk mit Stock-Nr:', stocknr);
 

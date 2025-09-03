@@ -1,5 +1,20 @@
 import Dexie, { Table } from 'dexie';
 
+// Client-only DB instance
+let dbInstance: ImkerDB | null = null;
+
+export function getDB(): ImkerDB {
+  if (typeof window === 'undefined') {
+    throw new Error('Database can only be accessed on the client side');
+  }
+  
+  if (!dbInstance) {
+    dbInstance = new ImkerDB();
+  }
+  
+  return dbInstance;
+}
+
 // Kern-Entitäten
 export interface Volk {
   id: string;
@@ -61,10 +76,9 @@ export class ImkerDB extends Dexie {
   }
 }
 
-export const db = new ImkerDB();
-
 // Mock-Daten für Demo
 export async function initMockData() {
+  const db = getDB();
   const standorteCount = await db.standorte.count();
   if (standorteCount > 0) return; // Bereits initialisiert
 

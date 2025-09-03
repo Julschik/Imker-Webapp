@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { ModuleCard } from '@/components/ui/module-card';
 import { getEnabledModules } from '@/lib/registry';
-import { initMockData } from '@/lib/db';
+import { initMockData, getDB } from '@/lib/db';
 import { log } from '@/utils/log';
 
 export default function Dashboard() {
