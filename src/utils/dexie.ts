@@ -1,18 +1,5 @@
 import { log, warn, error } from './log';
 
-// Re-export types for convenience
-export type {
-  BaseEntity,
-  User,
-  Workspace,
-  Membership,
-  Standort,
-  Volk,
-  Durchsicht,
-  Behandlung,
-  SyncMeta
-} from './_imker-database-client';
-
 // Database interface for type safety
 interface DatabaseInterface {
   users: any;
@@ -55,7 +42,8 @@ export async function getDbInstance(): Promise<DatabaseInterface> {
   if (!dbInstance) {
     try {
       log('Dexie', 'Initializing client-side database');
-      const { ImkerDatabase } = await import('./_imker-database-client');
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { ImkerDatabase } = require('./_imker-database-client');
       dbInstance = new ImkerDatabase();
       log('Dexie', 'Client-side database instance created');
     } catch (err) {
