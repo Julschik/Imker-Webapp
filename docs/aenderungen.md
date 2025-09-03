@@ -53,3 +53,19 @@ Minimale Änderung nur der betroffenen Script-Zeilen, bestehende Abhängigkeiten
 
 **Debug/Logs:** 
 Keine neuen Logs in diesem Schritt, Vorbereitung für nachfolgende Tasks
+
+## Task 1 — package.json Skripte und Basics (✓)
+- **Datum:** 2025-01-27
+- **Änderungen:** 
+  - `start` Script auf `next start -p 3000` angepasst
+  - `test` Script auf `vitest run` für CI-Kompatibilität geändert
+- **Grund:** Explizite Port-Angabe und bessere CI-Integration
+- **Status:** Abgeschlossen
+
+## Task 1.1 — next.config.js Fehler beheben (✓)
+- **Datum:** 2025-01-27
+- **Änderungen:**
+  - Entfernt: `experimental.appDir` (deprecated in Next.js 14)
+  - Hinzugefügt: `optimizeFonts: false` (verhindert Google Fonts Netzwerkfehler)
+- **Grund:** Build-Fehler durch veraltete Config und Netzwerkprobleme beim Font-Download
+- **Status:** Abgeschlossen
