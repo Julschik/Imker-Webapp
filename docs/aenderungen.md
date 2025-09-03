@@ -54,6 +54,32 @@ Minimale Änderung nur der betroffenen Script-Zeilen, bestehende Abhängigkeiten
 **Debug/Logs:** 
 Keine neuen Logs in diesem Schritt, Vorbereitung für nachfolgende Tasks
 
+### 2025-01-27 16:45 – Task 2.1: SSR-sichere Dexie-Nutzung mit expliziten Logs
+
+**Datei/Komponente:** src/utils/dexie.ts
+**Änderung:** 
+- Vollständige Überarbeitung für SSR-Sicherheit
+- `isBrowser` Check mit `typeof window !== 'undefined'`
+- Lazy `require('dexie')` nur im Browser-Kontext
+- `createBroadcastChannel` Hilfsfunktion mit SSR-Fallback
+- Explizite Warn-Logs bei Serveraufrufen für bessere Debugging-Erfahrung
+- Try/catch um BroadcastChannel-Erstellung mit Fehlerprotokollierung
+
+**Grund:** 
+Behebung des SSR-Crashes durch Browser-APIs (BroadcastChannel, Dexie) während Server-Side Rendering. Explizite Logs verbessern Debugging bei unerwarteten Serveraufrufen.
+
+**Umsetzung:** 
+- Synchroner require() statt import für Dexie (verhindert SSR-Evaluation)
+- Null-Rückgabe auf Server mit aussagekräftigen Warn-Logs
+- Fehlerbehandlung für BroadcastChannel mit Logging-Utility
+- Bestehende initDatabase() Funktion beibehalten und SSR-sicher gemacht
+
+**Debug/Logs:** 
+- [Dexie] Warn-Logs bei Serveraufrufen: "getDB() auf Server aufgerufen – return null (SSR)"
+- [Dexie] Warn-Logs bei BroadcastChannel-Serveraufrufen
+- [Dexie] Error-Logs bei BroadcastChannel-Fehlern mit Fehlermeldung
+- [Dexie] Info-Logs bei erfolgreicher DB-Initialisierung
+
 ## Task 1 — package.json Skripte und Basics (✓)
 - **Datum:** 2025-01-27
 - **Änderungen:** 

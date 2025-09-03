@@ -1,79 +1,64 @@
-import { log, warn, error } from './log';
+import { warn, log, error } from '@/utils/log';
 
-// Database interface for type safety
-interface DatabaseInterface {
-  users: any;
-  workspaces: any;
-  memberships: any;
-  standorte: any;
-  voelker: any;
-  durchsichten: any;
-  behandlungen: any;
-  syncMeta: any;
-  open(): Promise<void>;
+const isBrowser = typeof window !== 'undefined';
+let db: any = null;
+
+export function getDB() {
+  if (!isBrowser) {
+    warn('Dexie', 'getDB() auf Server aufgerufen – return null (SSR)');
+    return null;
+  }
+  if (db) return db;
+  // Lazy require nur im Browser, verhindert SSR-Eval
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { Dexie } = require('dexie') as { Dexie: typeof import('dexie').Dexie };
+  db = new Dexie('imker');
+  // TODO: Stores hier definieren, nicht top-level
+  // @ts-ignore
+  db.version(1).stores({
+    // example: voelker: 'id, standortId, stocknr'
+  });
+  log('Dexie', 'DB initialisiert');
+  return db;
 }
 
-// Dummy database for SSR
-const createDummyDatabase = (): DatabaseInterface => ({
-  users: { add: async () => {}, get: async () => null, toArray: async () => [] },
-  workspaces: { add: async () => {}, get: async () => null, toArray: async () => [] },
-  memberships: { add: async () => {}, get: async () => null, toArray: async () => [] },
-  standorte: { add: async () => {}, get: async () => null, toArray: async () => [] },
-  voelker: { add: async () => {}, get: async () => null, toArray: async () => [] },
-  durchsichten: { add: async () => {}, get: async () => null, toArray: async () => [] },
-  behandlungen: { add: async () => {}, get: async () => null, toArray: async () => [] },
-  syncMeta: { add: async () => {}, get: async () => null, toArray: async () => [] },
-  open: async () => {
-    warn('Dexie', 'Database operations skipped on server-side');
+export function createBroadcastChannel(name: string): BroadcastChannel | null {
+  if (!isBrowser) {
+    warn('Dexie', `BroadcastChannel(${name}) auf Server – return null`);
+    return null;
   }
-});
-
-// Singleton-Instanz
-let dbInstance: DatabaseInterface | null = null;
-
-export async function getDbInstance(): Promise<DatabaseInterface> {
-  // Server-side: Return dummy database
-  if (typeof window === 'undefined') {
-    warn('Dexie', 'Server-side detected, using dummy database');
-    return createDummyDatabase();
+  try {
+    // @ts-ignore
+    return new BroadcastChannel(name);
+  } catch (e: any) {
+    error('Dexie', 'BroadcastChannel fehlgeschlagen', { message: e?.message });
+    return null;
   }
-
-  // Client-side: Lazy load real database
-  if (!dbInstance) {
-    try {
-      log('Dexie', 'Initializing client-side database');
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { ImkerDatabase } = require('./_imker-database-client');
-      dbInstance = new ImkerDatabase();
-      log('Dexie', 'Client-side database instance created');
-    } catch (err) {
-      error('Dexie', 'Failed to create database instance', err);
-      // Fallback to dummy database on error
-      dbInstance = createDummyDatabase();
-    }
-  }
-  
-  return dbInstance;
 }
 
 // Initialisierung mit Fehlerbehandlung und SSR-Schutz
 export async function initDatabase(): Promise<void> {
   try {
     // Skip database initialization on server-side
-    if (typeof window === 'undefined') {
+    if (!isBrowser) {
       warn('Dexie', 'Database initialization skipped on server-side');
       return;
     }
 
     log('Dexie', 'Starting database initialization');
-    const db = await getDbInstance();
+    const db = getDB();
+    if (!db) {
+      warn('Dexie', 'Database not available, skipping initialization');
+      return;
+    }
+    
     await db.open();
     log('Dexie', 'Database opened successfully');
     
     // Prüfe ob bereits Sync-Meta existiert (nur client-side)
-    const syncMeta = await db.syncMeta.get('main');
+    const syncMeta = await db.syncMeta?.get('main');
     if (!syncMeta) {
-      await db.syncMeta.add({
+      await db.syncMeta?.add({
         id: 'main',
         cursor: '0',
         lastSync: new Date(0),
